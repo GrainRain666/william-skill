@@ -1,0 +1,59 @@
+{
+  "skill": "wh-xiaoetong-harvest",
+  "version": "1.0",
+  "checks": [
+    {
+      "id": "syntax-js",
+      "what": "油猴脚本 node --check 通过",
+      "how": "node --check scripts/userscript/小鹅通课程批量采集器.user.js",
+      "pass": "exit 0"
+    },
+    {
+      "id": "syntax-py",
+      "what": "全部 Python 脚本 py_compile 通过",
+      "how": "python -m py_compile scripts/xe_server.py scripts/xe_pipeline.py scripts/xe_doctor.py scripts/xiaoetong_transcript.py",
+      "pass": "exit 0 x4"
+    },
+    {
+      "id": "doctor",
+      "what": "环境体检无 FAIL",
+      "how": "python scripts/xe_doctor.py",
+      "pass": "退出码 0，无 [FAIL] 行"
+    },
+    {
+      "id": "server-ingest",
+      "what": "采集服务器接收 lesson/key/course_list 并落盘",
+      "how": "启动 xe_server 后 POST 合成清单，GET /status 数量正确，raw/ 出现 {vid}.m3u8 与 {vid}.key.b64",
+      "pass": "lessons=2 keyed=2 且文件存在"
+    },
+    {
+      "id": "drm-decrypt",
+      "what": "AES-128 加密 m3u8 改写 KEY URI 后 ffmpeg 解密成功",
+      "how": "ffmpeg -hls_key_info_file 生成加密测试流 → ingest → xe_pipeline --stage download",
+      "pass": "mp4 生成且 ffprobe 时长 ≈ 源时长（±5%）"
+    },
+    {
+      "id": "organize-structure",
+      "what": "章节/课时目录结构与 md+mp4 同名同置",
+      "how": "xe_pipeline --stage organize 后对照 structure-spec.md 逐层检查",
+      "pass": "root/章节/课时/{课时}.md + {课时}.mp4 且索引 md 存在"
+    },
+    {
+      "id": "obsidian-archive-first",
+      "what": "目标已存在时先归档再复制",
+      "how": "对临时假 vault 连跑两次 --stage obsidian，第二次应出现归档目录且新内容替换",
+      "pass": "归档目录含旧树，新目标 md/mp4 数与源一致"
+    },
+    {
+      "id": "compliance",
+      "what": "全部文件零 emoji、无直角引号（U+300C/U+300D/U+300E/U+300F 日式引号）",
+      "how": "python 扫描 0x1F000-0x1FFFF / 0x2600-0x27BF / 0x2300-0x23FF 与 U+300C-U+300F（全部文件）",
+      "pass": "0 命中"
+    }
+  ],
+  "pending_real_world": [
+    "真实课程目录页批量采集端到端（需登录态 + tabbit）",
+    "v-vod-k DRM 真实密钥链路下载（依赖真实 sign）",
+    "transcribe 阶段 GPU 实跑（依赖 faster-whisper 安装）"
+  ]
+}
